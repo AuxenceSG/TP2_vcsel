@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TP2 : collimation et focalisation d'une VCSEL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f8fa;--card:#eef0f3;--ink:#1c2230;--ink2:#566072;--line:#c9ced8;--danger:#b3261e;--axis:#7a8396;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--card:#1c212b;--ink:#e6e9ef;--ink2:#a2abbb;--line:#3a4252;--danger:#f2817a;--axis:#8e98ab}}
+:root[data-theme="dark"]{--bg:#12151c;--card:#1c212b;--ink:#e6e9ef;--ink2:#a2abbb;--line:#3a4252;--danger:#f2817a;--axis:#8e98ab}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+main{max-width:760px;margin:0 auto;padding:24px 16px 40px}
+h1{font-size:22px;font-weight:500;margin:0 0 4px}
+.sub{color:var(--ink2);font-size:14px;margin:0 0 16px}
+svg{width:100%;height:auto;display:block}
+svg .t{font-size:14px;fill:var(--ink)} svg .ts{font-size:12px;fill:var(--ink2)} svg .th{font-size:14px;font-weight:500;fill:var(--ink)}
+svg .leader{stroke:var(--axis);stroke-width:.5;stroke-dasharray:3 3}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;font-size:14px;color:var(--ink2)}
+.row .k{min-width:110px}
+input[type=range]{flex:1;min-width:110px;accent-color:#2f6fbf}
+button{font:inherit;font-size:14px;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer}
+button:hover{background:var(--card)} button.on{border-color:#2f6fbf;color:#2f6fbf}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #2f6fbf;outline-offset:2px}
+textarea{width:100%;margin-top:4px;font:13px ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:8px}
+.mc{background:var(--card);border-radius:8px;padding:8px 12px}
+.mc p{margin:0} .lab{font-size:12px;color:var(--ink2)} .val{font-size:17px;font-weight:500}
+.note{font-size:13px;color:var(--ink2);margin-top:16px}
+#derr{font-size:13px;color:var(--danger)}
+.rms{font-size:13px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<main>
+<h1>Collimation et focalisation d'une VCSEL</h1>
+<p class="sub">Banc du TP2 : VCSEL 850 nm, L1 asphérique f = 3,1 mm, L2 plan-convexe f = 125 mm. Modèle gaussien avec M².</p>
+<svg viewBox="0 0 680 560" role="img" aria-labelledby="st sd">
+<title id="st">Profil du faisceau et zoom sur le waist</title>
+<desc id="sd">En haut, faisceau de L1 jusqu'à 1,5 m avec échelles. En bas, zoom sur le waist avec barres d'échelle.</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<clipPath id="zclip"><rect x="90" y="310" width="550" height="200"/></clipPath>
+<clipPath id="mclip"><rect x="78" y="10" width="570" height="220"/></clipPath>
+</defs>
+<g clip-path="url(#mclip)">
+<path id="cone" fill="#E24B4A" fill-opacity="0.3" stroke="#E24B4A" stroke-width="1"/>
+<path id="mb" fill="#E24B4A" fill-opacity="0.3" stroke="#E24B4A" stroke-width="1"/>
+<g id="pts"></g>
+</g>
+<rect id="mw" fill="none" stroke="#BA7517" stroke-width="1" stroke-dasharray="4 3"/>
+<rect x="30" y="105" width="48" height="30" rx="4" fill="#888780" stroke="#5F5E5A" stroke-width="0.5"/>
+<text class="ts" x="54" y="96" text-anchor="middle">VCSEL</text>
+<ellipse id="l1e" cx="90" cy="120" rx="4" ry="26" fill="#85B7EB" fill-opacity="0.6" stroke="#185FA5" stroke-width="1"/>
+<text id="l1t" class="ts" x="90" y="86" text-anchor="middle">L1</text>
+<g id="l2g"><ellipse id="l2e" cx="200" cy="120" rx="5" ry="26" fill="#85B7EB" fill-opacity="0.6" stroke="#185FA5" stroke-width="1"/><text id="l2t" class="ts" x="200" y="86" text-anchor="middle">L2</text></g>
+<line x1="658" y1="109" x2="658" y2="131" stroke="var(--ink)" stroke-width="2"/>
+<text class="ts" x="658" y="102" text-anchor="middle">1 mm</text>
+<line x1="90" y1="238" x2="640" y2="238" stroke="var(--axis)" stroke-width="1"/>
+<g id="ticks"></g>
+<text class="ts" x="365" y="272" text-anchor="middle">Distance depuis L1 (m)</text>
+<text class="th" x="90" y="298">Zoom autour du waist</text>
+<text class="ts" x="640" y="298" text-anchor="end">Échelles x et y différentes</text>
+<rect x="90" y="310" width="550" height="200" fill="none" stroke="#BA7517" stroke-width="1" stroke-dasharray="4 3"/>
+<line x1="90" y1="410" x2="640" y2="410" stroke="var(--axis)" stroke-width="0.5" stroke-dasharray="2 3"/>
+<g id="zg" clip-path="url(#zclip)"></g>
+<g id="sb"></g>
+</svg>
+<div class="row"><span class="k">Butée L1</span>
+<button data-d="-20">−20 µm</button><button data-d="0">Collimation</button><button data-d="20">+20 µm</button>
+<input type="range" id="dl" min="-40" max="40" step="1" value="0" aria-label="Écart d − f en µm">
+<span id="dlv" style="min-width:110px;text-align:right">d − f = 0 µm</span></div>
+<div class="row"><span class="k">Divergence VCSEL</span>
+<input type="range" id="th" min="4" max="15" step="0.01" value="10" aria-label="Demi-angle de divergence">
+<span id="thv" style="min-width:48px">10,00°</span><span>M²</span>
+<input type="range" id="m2" min="1" max="3" step="0.01" value="1" aria-label="M²">
+<span id="m2v" style="min-width:28px">1,0</span></div>
+<div class="row"><label class="k" style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="l2on"> L2 (125 mm)</label>
+<span>Position L2</span><input type="range" id="zl2" min="10" max="80" step="1" value="30" aria-label="Position de L2 en cm">
+<span id="zl2v" style="min-width:60px;text-align:right">30 cm</span></div>
+<div style="margin:10px 0">
+<label for="data" style="font-size:14px;color:var(--ink2)">Relevés collimation (une ligne par point, collage Excel accepté) : z depuis L1 en mm ; w rayon 1/e² en µm</label>
+<textarea id="data" rows="4" placeholder="100 ; 504&#10;500 ; 634&#10;1000 ; 871"></textarea>
+<span id="derr"></span> <span id="rms1" class="rms"></span></div>
+<div style="margin:10px 0" id="d2box">
+<label for="data2" style="font-size:14px;color:var(--ink2)">Relevés focalisation : z relatif au waist 2 en mm (0 au pincement) ; w rayon 1/e² en µm. Les points s'affichent dans le zoom.</label>
+<textarea id="data2" rows="4" placeholder="-50 ; 221&#10;0 ; 67&#10;50 ; 220"></textarea>
+<span id="derr2" style="font-size:13px;color:var(--danger)"></span> <span id="rms2" class="rms"></span></div>
+<div class="grid">
+<div class="mc"><p class="lab">w₁ (rayon)</p><p class="val" id="a1">—</p></div>
+<div class="mc"><p class="lab">θ₁</p><p class="val" id="a2">—</p></div>
+<div class="mc"><p class="lab">w₁·θ₁</p><p class="val" id="a3">—</p></div>
+<div class="mc"><p class="lab">Waist 1 après L1</p><p class="val" id="a4">—</p></div>
+<div class="mc"><p class="lab">z_R1</p><p class="val" id="a5">—</p></div>
+<div class="mc"><p class="lab">w à 1,5 m</p><p class="val" id="a6">—</p></div>
+</div>
+<div class="grid" id="row2">
+<div class="mc"><p class="lab">w₂ (rayon)</p><p class="val" id="b1">—</p></div>
+<div class="mc"><p class="lab">θ₂</p><p class="val" id="b2">—</p></div>
+<div class="mc"><p class="lab">w₂·θ₂</p><p class="val" id="b3">—</p></div>
+<div class="mc"><p class="lab">Waist 2 après L2</p><p class="val" id="b4">—</p></div>
+<div class="mc"><p class="lab">z_R2</p><p class="val" id="b5">—</p></div>
+</div>
+<p class="note">Rayons à 1/e² en intensité. Le panneau du haut est à l'échelle (barre verticale : 1 mm). Un waist en pointillés est virtuel.</p>
+</main>
+<script>
+const LAM=850e-9,F1=3.1e-3,F2=0.125;
+const X0=90,XE=640,PXM=550/1.5,CY=120,VY=11/0.5e-3,HMAX=105;
+const ZX0=90,ZX1=640,ZY0=310,ZY1=510,ZCY=410,ZH=88,ZW=550;
+const $=id=>document.getElementById(id);
+let D=0;
+let tk='';for(let k=0;k<=6;k++){const z=k*0.25,x=X0+z*PXM;tk+=`<line x1="${x}" y1="232" x2="${x}" y2="244" stroke="var(--axis)" stroke-width="1"/><text class="ts" x="${x}" y="258" text-anchor="middle">${z.toLocaleString('fr-FR')}</text>`;}$('ticks').innerHTML=tk;
+function fl(x){const a=Math.abs(x);let v,u;if(a===0)return '0';if(a<1e-6){v=x*1e9;u='nm'}else if(a<1e-3){v=x*1e6;u='µm'}else if(a<1){v=x*1e3;u='mm'}else{v=x;u='m'}return (+v.toPrecision(3)).toLocaleString('fr-FR')+' '+u;}
+function fa(r){return (+(r*1e3).toPrecision(3)).toLocaleString('fr-FR')+' mrad';}
+function nice(x){const p=Math.pow(10,Math.floor(Math.log10(x))),n=x/p;return (n<1.5?1:n<3.5?2:n<7.5?5:10)*p;}
+function lens(a,b,f){const d=a*a+b*b;let ia=a/d,ib=-b/d;ia-=1/f;const dd=ia*ia+ib*ib;return [ia/dd,-ib/dd];}
+function draw(){
+const M=+$('m2').value,th0=+$('th').value*Math.PI/180,L2=$('l2on').checked,zl2=+$('zl2').value/100;
+$('dl').value=D;$('dlv').textContent='d − f = '+(D>0?'+':D<0?'−':'')+Math.abs(D)+' µm';
+document.querySelectorAll('button[data-d]').forEach(b=>b.classList.toggle('on',+b.dataset.d===D));
+$('thv').textContent=(+$('th').value).toFixed(2).replace('.',',')+'°';$('m2v').textContent=M.toFixed(2).replace('.',',');$('zl2v').textContent=$('zl2').value+' cm';
+const ML=M*LAM,wq=(a,b)=>Math.sqrt(ML/Math.PI*(a*a+b*b)/b);
+const w0=ML/(Math.PI*th0),zR0=Math.PI*w0*w0/ML,d=F1+D*1e-6;
+const q1=lens(d,zR0,F1),zw1=-q1[0],zR1=q1[1],w1=Math.sqrt(zR1*ML/Math.PI),t1=ML/(Math.PI*w1);
+const w0f=z=>wq(z+d,zR0),w1f=z=>wq(q1[0]+z,q1[1]);
+let q2,zw2,zR2,w2,t2,w2f;
+if(L2){q2=lens(q1[0]+zl2,q1[1],F2);zw2=zl2-q2[0];zR2=q2[1];w2=Math.sqrt(zR2*ML/Math.PI);t2=ML/(Math.PI*w2);w2f=z=>wq(q2[0]+(z-zl2),q2[1]);}
+const beam=z=>z<0?w0f(z):(L2&&z>=zl2?w2f(z):w1f(z));
+const X=z=>X0+z*PXM,hp=w=>Math.min(HMAX,Math.max(1,w*VY));
+const h0=hp(beam(0));$('cone').setAttribute('d',`M78,${CY} L${X0},${CY-h0} L${X0},${CY+h0}Z`);
+const xs=[];for(let x=X0;x<=XE;x+=3)xs.push(x);if(L2)xs.push(X(zl2),X(zl2)+0.01);xs.sort((a,b)=>a-b);
+const T=[],B=[];xs.forEach(x=>{const h=hp(beam((x-X0)/PXM));T.push(`${x.toFixed(1)},${(CY-h).toFixed(1)}`);B.unshift(`${x.toFixed(1)},${(CY+h).toFixed(1)}`);});
+$('mb').setAttribute('d','M'+T.join(' L')+' L'+B.join(' L')+'Z');
+const r1=Math.max(26,h0+8);$('l1e').setAttribute('ry',r1);$('l1t').setAttribute('y',CY-r1-8);
+$('l2g').style.display=L2?'':'none';
+if(L2){const hx=hp(beam(zl2)),r2=Math.max(26,hx+8);$('l2e').setAttribute('cx',X(zl2));$('l2e').setAttribute('ry',r2);$('l2t').setAttribute('x',X(zl2));$('l2t').setAttribute('y',CY-r2-8);}
+const parse=t=>{const out=[];let bad=0;t.trim().split(/\n+/).forEach(l=>{l=l.trim();if(!l)return;const p=l.split(/\s*[;\t]\s*|\s+/).map(v=>parseFloat(v.replace(',','.')));if(p.length<2||!isFinite(p[0])||!isFinite(p[1])){bad++;return;}out.push([p[0]*1e-3,p[1]*1e-6]);});return [out,bad];};
+const rmsTxt=(pts,fn)=>{if(!pts.length)return '';const r=Math.sqrt(pts.reduce((a,[z,w])=>a+(fn(z)-w)**2,0)/pts.length);return 'Écart quadratique moyen modèle / mesures : '+fl(r);};
+const [P1,bad]=parse($('data').value);let ph='';
+P1.forEach(([z,w])=>{const x=X(z),h=Math.min(HMAX,w*VY);ph+=`<circle cx="${x}" cy="${CY-h}" r="3" fill="var(--ink)"/><circle cx="${x}" cy="${CY+h}" r="3" fill="var(--ink)"/>`;});
+$('rms1').textContent=rmsTxt(P1,w1f)+(L2&&P1.length?' (calculé sans L2)':'');
+$('pts').innerHTML=ph;$('derr').textContent=bad?bad+' ligne(s) illisible(s). Format attendu : 500 ; 634':'';
+const tg=L2?{zw:zw2,zR:zR2,w0:w2,f:w2f,dom:zl2,Fz:zl2+F2,Fn:"F'₂",ln:'L2'}:{zw:zw1,zR:zR1,w0:w1,f:w1f,dom:0,Fz:F1,Fn:"F'₁",ln:'L1'};
+const H=2.5*tg.zR,zmin=tg.zw-H,zmax=tg.zw+H,vmax=1.15*Math.max(tg.f(zmin),tg.f(zmax));
+let rx0=X(zmin),rx1=X(zmax);const mw=$('mw');
+if(rx1<X0||rx0>XE){mw.setAttribute('width',0);mw.setAttribute('height',0);}
+else{rx0=Math.max(X0,rx0);rx1=Math.min(XE,rx1);if(rx1-rx0<6){const c=(rx0+rx1)/2;rx0=c-3;rx1=c+3;}const hh=Math.min(HMAX,Math.max(6,vmax*VY));mw.setAttribute('x',rx0);mw.setAttribute('width',rx1-rx0);mw.setAttribute('y',CY-hh);mw.setAttribute('height',2*hh);}
+const zx=z=>ZX0+(z-zmin)/(2*H)*ZW,zy=w=>ZCY-w/vmax*ZH;
+const poly=(a,b,f)=>{a=Math.max(a,zmin);b=Math.min(b,zmax);if(b<=a)return '';const N=160,P=[],Q=[];for(let i=0;i<=N;i++){const z=a+(b-a)*i/N,w=f(z);P.push(`${zx(z).toFixed(1)},${zy(w).toFixed(1)}`);Q.unshift(`${zx(z).toFixed(1)},${zy(-w).toFixed(1)}`);}return `<path d="M${P.join(' L')} L${Q.join(' L')}Z" fill="#E24B4A" fill-opacity="0.3" stroke="#E24B4A" stroke-width="1"/>`;};
+const dash=(a,b,f)=>{a=Math.max(a,zmin);b=Math.min(b,zmax);if(b<=a)return '';const N=160,P=[],Q=[];for(let i=0;i<=N;i++){const z=a+(b-a)*i/N,w=f(z);P.push(`${zx(z).toFixed(1)},${zy(w).toFixed(1)}`);Q.push(`${zx(z).toFixed(1)},${zy(-w).toFixed(1)}`);}return `<path d="M${P.join(' L')}" fill="none" stroke="#E24B4A" stroke-width="1" stroke-dasharray="4 3"/><path d="M${Q.join(' L')}" fill="none" stroke="#E24B4A" stroke-width="1" stroke-dasharray="4 3"/>`;};
+let g='';
+g+=poly(-d,0,w0f);g+=poly(0,L2?zl2:1e9,w1f);if(L2)g+=poly(zl2,1e9,w2f);
+g+=dash(-1e9,tg.dom,tg.f);
+const wx=zx(tg.zw),virt=tg.zw<tg.dom;
+g+=`<line x1="${wx}" y1="${zy(tg.w0)}" x2="${wx}" y2="${zy(-tg.w0)}" stroke="var(--ink)" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>`;
+g+=`<line class="leader" x1="${wx}" y1="${ZY0+22}" x2="${wx}" y2="${zy(tg.w0)-4}"/>`;
+g+=`<text class="ts" x="${wx+8}" y="${ZY0+16}">2w${L2?'₂':'₁'} = ${fl(2*tg.w0)}${virt?' (virtuel)':''}</text>`;
+g+=`<line x1="${zx(tg.zw-tg.zR)}" y1="${ZY1-12}" x2="${zx(tg.zw+tg.zR)}" y2="${ZY1-12}" stroke="var(--ink)" stroke-width="1" marker-start="url(#arrow)" marker-end="url(#arrow)"/>`;
+g+=`<text class="ts" x="${wx}" y="${ZY1-22}" text-anchor="middle">2z_R = ${fl(2*tg.zR)}</text>`;
+const fx=zx(tg.Fz),lx=zx(tg.dom);
+if(fx>ZX0+20&&fx<ZX1){g+=`<line x1="${fx}" y1="${ZY0+24}" x2="${fx}" y2="${ZY1-40}" stroke="#BA7517" stroke-width="1" stroke-dasharray="3 3"/><text class="ts" x="${fx-8}" y="${ZY0+16}" text-anchor="end">${tg.Fn}</text>`;}
+if(lx>ZX0+40&&lx<ZX1&&Math.abs(lx-fx)>40){g+=`<line x1="${lx}" y1="${ZY0+24}" x2="${lx}" y2="${ZY1-40}" stroke="#185FA5" stroke-width="2"/><text class="ts" x="${lx-8}" y="${ZY0+16}" text-anchor="end">${tg.ln}</text>`;}
+const [P2,bad2]=parse($('data2').value);
+$('d2box').style.display=L2?'':'none';
+$('derr2').textContent=bad2?bad2+' ligne(s) illisible(s). Format attendu : -50 ; 221':'';
+if(L2){P2.forEach(([z,w])=>{const x=zx(zw2+z);g+=`<circle cx="${x.toFixed(1)}" cy="${zy(w).toFixed(1)}" r="3.5" fill="var(--ink)"/><circle cx="${x.toFixed(1)}" cy="${zy(-w).toFixed(1)}" r="3.5" fill="var(--ink)"/>`;});$('rms2').textContent=rmsTxt(P2,z=>w2f(zw2+z));}else $('rms2').textContent='';
+$('zg').innerHTML=g;
+const hl=nice(2*H/4),hpx=hl/(2*H)*ZW,vl=nice(vmax/2),vpx=vl/vmax*ZH;
+$('sb').innerHTML=`<line x1="${ZX0}" y1="528" x2="${ZX0+hpx}" y2="528" stroke="var(--ink)" stroke-width="2"/><line x1="${ZX0}" y1="523" x2="${ZX0}" y2="533" stroke="var(--ink)" stroke-width="1"/><line x1="${ZX0+hpx}" y1="523" x2="${ZX0+hpx}" y2="533" stroke="var(--ink)" stroke-width="1"/><text class="ts" x="${ZX0+hpx/2}" y="548" text-anchor="middle">${fl(hl)}</text><line x1="55" y1="${ZCY-vpx/2}" x2="55" y2="${ZCY+vpx/2}" stroke="var(--ink)" stroke-width="2"/><line x1="50" y1="${ZCY-vpx/2}" x2="60" y2="${ZCY-vpx/2}" stroke="var(--ink)" stroke-width="1"/><line x1="50" y1="${ZCY+vpx/2}" x2="60" y2="${ZCY+vpx/2}" stroke="var(--ink)" stroke-width="1"/><text class="ts" x="55" y="${ZCY-vpx/2-8}" text-anchor="middle">${fl(vl)}</text>`;
+const pos=z=>z<0?'−'+fl(-z)+' (virt.)':fl(z);
+$('a1').textContent=fl(w1);$('a2').textContent=fa(t1);$('a3').textContent=(+(w1*1e3*t1*1e3).toPrecision(3)).toLocaleString('fr-FR')+' mm·mrad';
+$('a4').textContent=pos(zw1);$('a5').textContent=fl(zR1);$('a6').textContent=fl(beam(1.5));
+$('row2').style.display=L2?'':'none';
+if(L2){$('b1').textContent=fl(w2);$('b2').textContent=fa(t2);$('b3').textContent=(+(w2*1e3*t2*1e3).toPrecision(3)).toLocaleString('fr-FR')+' mm·mrad';$('b4').textContent=pos(zw2-zl2);$('b5').textContent=fl(zR2);}
+}
+document.querySelectorAll('button[data-d]').forEach(b=>b.onclick=()=>{D=+b.dataset.d;draw();});
+$('dl').oninput=e=>{D=+e.target.value;draw();};
+['th','m2','zl2'].forEach(id=>$(id).oninput=draw);$('l2on').onchange=draw;$('data').oninput=draw;$('data2').oninput=draw;
+draw();
+</script>
+</body>
+</html>
